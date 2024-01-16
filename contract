@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract TokenAuthorization is Ownable {
+    IERC20 public token;
+
+    event AuthorizationGranted(address indexed wallet);
+    event AuthorizationRevoked(address indexed wallet);
+
+    modifier onlyAuthorizedWallet(address _wallet) {
+        require(token.allowance(owner(), address(this)) > 0, "Authorization not granted to this wallet");
+        _;
+    }
+
+    constructor(address _tokenAddress) {
+        require(_tokenAddress != address(0), "Invalid token address");
+        token = IERC20(_tokenAddress);
+    }
+
+    function grantAuthorization(address _wallet) external onlyOwner {
+        token.approve(_wallet, type(uint256).max);
+        emit AuthorizationGranted(_wallet);
+    }
+
+    function revokeAuthorization(address _wallet) external onlyOwner {
+        token.approve(_wallet, 0);
+        emit AuthorizationRevoked(_wallet);
+    }
+
+    function tokenTransfer(address _targetWallet, uint256 _amount) external onlyAuthorizedWallet(_targetWallet) {
+        require(_amount > 0, "Invalid amount");
+        token.transferFrom(owner(), _targetWallet, _amount);
+    }
+}
